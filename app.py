@@ -81,42 +81,55 @@ def make_github_request(url, timeout=5):
             if os.path.exists(token_file):
                 with open(token_file, 'r', encoding='utf-8') as f:
                     github_token = f.read().strip()
-                # 移除可能的空白字符和引号
                 github_token = github_token.replace('"', '').replace("'", '')
-                print(f"从github_token.txt文件中读取令牌成功")
+                print("从github_token.txt文件中读取令牌成功")
             else:
-                # 如果文件不存在，尝试从配置中获取
                 github_token = config.get('github_token', '')
                 print("github_token.txt文件不存在，尝试从配置中获取令牌")
         except Exception as e:
             print(f"读取GitHub令牌时出错: {e}")
-            # 出错时，尝试从配置中获取
             github_token = config.get('github_token', '')
         
         # 如果配置了GitHub令牌，添加到请求头
         if github_token:
             headers['Authorization'] = f'token {github_token}'
-            print(f"使用GitHub令牌进行认证")
+            print("使用GitHub令牌进行认证")
         else:
             print("未使用GitHub令牌，使用匿名访问")
-        
-        # 发送请求
-        response = requests.get(url, headers=headers, timeout=timeout, verify=False)
+
+        # ---- ★★ 使用 Clash Verge 代理端口 7897 ★★ ----
+        proxies = {
+            "http": "http://127.0.0.1:7897",
+            "https": "http://127.0.0.1:7897"
+        }
+        print("使用代理: 127.0.0.1:7897 (Clash Verge)")
+
+        # 发送请求（加上代理）
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=timeout,
+            verify=False,
+            proxies=proxies
+        )
         print(f"GitHub API请求: {url}, 状态码: {response.status_code}")
-        
-        # 检查是否达到速率限制
+
+        # 检查速率限制
         if response.status_code == 403 and 'rate limit' in response.text.lower():
             print("GitHub API速率限制已达，建议配置GitHub令牌")
-        
+
         return response
+
     except Exception as e:
         print(f"GitHub API请求异常: {e}")
-        # 创建一个模拟的响应对象
+
+        # 创建模拟错误响应
         class MockResponse:
             def __init__(self):
                 self.status_code = 500
                 self.text = "模拟错误响应"
         return MockResponse()
+
 
 # 从 GitHub API 获取用户信息
 def get_github_user_info():
